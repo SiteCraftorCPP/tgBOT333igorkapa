@@ -1,0 +1,15 @@
+# Telegram Bot
+python-telegram-bot==20.7
+
+# Web Framework для webhook
+Flask==3.0.0
+
+# HTTP клиент
+requests==2.31.0
+
+# Переменные окружения
+python-dotenv==1.0.0
+
+# База данных (встроенный sqlite3)
+# Дополнительные утилиты
+asyncio
