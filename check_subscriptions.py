@@ -6,7 +6,7 @@
 import logging
 import asyncio
 from telegram import Bot
-from datetime import datetime
+from datetime import datetime, timedelta
 
 import config
 import database as db
@@ -27,30 +27,28 @@ async def check_and_remove_expired():
     # Получаем истёкшие подписки
     expired = db.get_expired_subscriptions()
     
-    # Также проверяем тестовые подписки (они истекают быстрее)
-    current_time = datetime.now().isoformat()
-    with db.get_db() as conn:
-        cursor = conn.cursor()
-        cursor.execute("""
-            SELECT * FROM subscriptions
-            WHERE status = 'active'
-            AND end_date <= ?
-            AND stripe_subscription_id LIKE 'test_%'
-        """, (current_time,))
-        test_expired = cursor.fetchall()
-        
-        if test_expired:
-            expired = list(expired) + [dict(row) for row in test_expired]
+    # ФИЛЬТРАЦИЯ: Удаляем только тех, у кого подписка кончилась более 24 часов назад
+    # Это дает юзеру 1 день на продление
+    final_to_remove = []
+    grace_period = timedelta(days=1)
+    now = datetime.now()
     
-    logger.info(f"Найдено истёкших подписок: {len(expired)}")
-    
-    # Группируем подписки по telegram_id (у одного юзера может быть несколько)
-    users_to_check = {}
     for sub in expired:
+        end_date = datetime.fromisoformat(sub['end_date'])
+        if now > (end_date + grace_period):
+            final_to_remove.append(sub)
+        else:
+            logger.info(f"⏳ Юзер {sub['telegram_id']} в льготном периоде (истекло {end_date.strftime('%d.%m %H:%M')})")
+
+    # Группируем подписки по telegram_id (только для тех, кто прошел льготный период)
+    users_to_check = {}
+    for sub in final_to_remove:
         telegram_id = sub['telegram_id']
         if telegram_id not in users_to_check:
             users_to_check[telegram_id] = []
         users_to_check[telegram_id].append(sub)
+    
+    logger.info(f"Итого к удалению после льготного периода: {len(users_to_check)}")
     
     # Обрабатываем каждого пользователя
     for telegram_id, subs in users_to_check.items():
