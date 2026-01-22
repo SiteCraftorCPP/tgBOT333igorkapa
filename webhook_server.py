@@ -188,37 +188,66 @@ async def handle_checkout_completed(session):
     await create_and_send_invite_link(telegram_id)
 
 async def handle_invoice_paid(invoice):
-    """Обработка успешной оплаты счёта (продление подписки)"""
-    logger.info(f"Инвойс оплачен: {invoice['id']}")
+    """Обработка успешной оплаты счёта (автосписание - продление подписки)"""
+    logger.info(f"Инвойс оплачен (автосписание): {invoice['id']}")
     
     subscription_id = invoice.get('subscription')
     
     if not subscription_id:
         return
     
-    # Обновляем статус подписки в БД
-    db.update_subscription_status(subscription_id, 'active')
-    
-    # Получаем подписку из БД
+    # Получаем подписку из БД по Stripe ID
     subscription = db.get_subscription_by_stripe_id(subscription_id)
     
-    if subscription:
-        telegram_id = subscription['telegram_id']
-        
-        # Проверяем, есть ли пользователь в канале
-        # Если нет - отправляем новую инвайт-ссылку
-        try:
-            member = await bot.get_chat_member(config.CHANNEL_ID, telegram_id)
-            if member.status in ['left', 'kicked']:
-                await create_and_send_invite_link(telegram_id)
-            else:
-                # Уведомляем о продлении
-                await send_telegram_message(
-                    telegram_id,
-                    "✅ Tu suscripción ha sido renovada con éxito.\n\nTu acceso al canal continúa activo."
-                )
-        except Exception as e:
-            logger.error(f"Ошибка проверки статуса пользователя: {e}")
+    if not subscription:
+        logger.error(f"Подписка {subscription_id} не найдена в БД")
+        return
+    
+    telegram_id = subscription['telegram_id']
+    
+    # Получаем детали подписки из Stripe чтобы узнать price_id и duration
+    stripe_subscription = get_subscription(subscription_id)
+    
+    if not stripe_subscription:
+        logger.error(f"Не удалось получить подписку {subscription_id} из Stripe")
+        return
+    
+    # Получаем Price ID и duration
+    items = stripe_subscription.get('items', {}).get('data', [])
+    if not items:
+        logger.error("Нет items в подписке")
+        return
+    
+    price_id = items[0].get('price', {}).get('id')
+    duration = get_duration_from_price_id(price_id)
+    
+    # ПРОДЛЕВАЕМ подписку через renew_or_create (обновляет end_date!)
+    db.renew_or_create_subscription(
+        telegram_id=telegram_id,
+        stripe_customer_id=stripe_subscription.get('customer'),
+        stripe_subscription_id=subscription_id,
+        stripe_price_id=price_id,
+        duration_months=duration
+    )
+    
+    logger.info(f"✅ Автосписание: подписка продлена для {telegram_id}")
+    
+    # Проверяем, есть ли пользователь в канале
+    # Если нет - отправляем новую инвайт-ссылку
+    try:
+        member = await bot.get_chat_member(config.CHANNEL_ID, telegram_id)
+        if member.status in ['left', 'kicked']:
+            await create_and_send_invite_link(telegram_id)
+            logger.info(f"Пользователь {telegram_id} не в канале, отправлена инвайт-ссылка")
+        else:
+            # Уведомляем о продлении (можно отключить если не нужно)
+            await send_telegram_message(
+                telegram_id,
+                "✅ Tu suscripción ha sido renovada automáticamente.\n\nTu acceso al canal continúa activo."
+            )
+            logger.info(f"Пользователь {telegram_id} уведомлён о продлении")
+    except Exception as e:
+        logger.error(f"Ошибка проверки статуса пользователя {telegram_id}: {e}")
 
 async def handle_invoice_failed(invoice):
     """Обработка провала оплаты счёта"""
