@@ -115,18 +115,76 @@ def create_subscription(telegram_id, stripe_customer_id, stripe_subscription_id,
         logger.info(f"Создана подписка {subscription_id} для пользователя {telegram_id}")
         return subscription_id
 
+def renew_or_create_subscription(telegram_id, stripe_customer_id, stripe_subscription_id, 
+                                  stripe_price_id, duration_months):
+    """Продлить существующую подписку или создать новую"""
+    with get_db() as conn:
+        cursor = conn.cursor()
+        
+        # Проверяем, есть ли активная подписка
+        cursor.execute('''
+            SELECT * FROM subscriptions
+            WHERE telegram_id = ? 
+            AND status = 'active'
+            ORDER BY end_date DESC
+            LIMIT 1
+        ''', (telegram_id,))
+        
+        existing = cursor.fetchone()
+        
+        if existing:
+            # Есть активная подписка - ПРОДЛЕВАЕМ
+            old_end_date = datetime.fromisoformat(existing['end_date'])
+            current_time = datetime.now()
+            
+            # Если подписка ещё не истекла - продлеваем от текущей даты окончания
+            # Если уже истекла - продлеваем от текущего момента
+            base_date = max(old_end_date, current_time)
+            new_end_date = base_date + timedelta(days=30 * duration_months)
+            
+            cursor.execute('''
+                UPDATE subscriptions
+                SET end_date = ?,
+                    stripe_subscription_id = ?,
+                    stripe_price_id = ?,
+                    updated_at = ?
+                WHERE id = ?
+            ''', (new_end_date.isoformat(), stripe_subscription_id, stripe_price_id, 
+                  datetime.now().isoformat(), existing['id']))
+            
+            logger.info(f"✅ Подписка {existing['id']} продлена до {new_end_date} для юзера {telegram_id}")
+            return existing['id']
+        else:
+            # Нет активной подписки - СОЗДАЁМ НОВУЮ
+            start_date = datetime.now()
+            end_date = start_date + timedelta(days=30 * duration_months)
+            
+            cursor.execute('''
+                INSERT INTO subscriptions 
+                (telegram_id, stripe_customer_id, stripe_subscription_id, stripe_price_id, 
+                 status, start_date, end_date)
+                VALUES (?, ?, ?, ?, 'active', ?, ?)
+            ''', (telegram_id, stripe_customer_id, stripe_subscription_id, stripe_price_id,
+                  start_date.isoformat(), end_date.isoformat()))
+            
+            subscription_id = cursor.lastrowid
+            logger.info(f"🆕 Создана новая подписка {subscription_id} для юзера {telegram_id}")
+            return subscription_id
+
 def get_active_subscription(telegram_id):
     """Получить активную подписку пользователя"""
+    current_time = datetime.now().isoformat()
+    
     with get_db() as conn:
         cursor = conn.cursor()
         cursor.execute('''
             SELECT * FROM subscriptions
             WHERE telegram_id = ? 
             AND status = 'active'
-            AND end_date > CURRENT_TIMESTAMP
+            AND end_date > ?
             ORDER BY end_date DESC
             LIMIT 1
-        ''', (telegram_id,))
+        ''', (telegram_id, current_time))
         
         row = cursor.fetchone()
         return dict(row) if row else None

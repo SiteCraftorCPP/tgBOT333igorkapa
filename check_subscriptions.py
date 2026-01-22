@@ -44,21 +44,55 @@ async def check_and_remove_expired():
     
     logger.info(f"Найдено истёкших подписок: {len(expired)}")
     
-    for subscription in expired:
-        telegram_id = subscription['telegram_id']
+    # Группируем подписки по telegram_id (у одного юзера может быть несколько)
+    users_to_check = {}
+    for sub in expired:
+        telegram_id = sub['telegram_id']
+        if telegram_id not in users_to_check:
+            users_to_check[telegram_id] = []
+        users_to_check[telegram_id].append(sub)
+    
+    # Обрабатываем каждого пользователя
+    for telegram_id, subs in users_to_check.items():
         
         try:
+            # ВАЖНО: Проверяем, есть ли у юзера ДРУГИЕ активные подписки
+            active_sub = db.get_active_subscription(telegram_id)
+            
+            if active_sub:
+                logger.info(f"⏭️ Пропуск {telegram_id}: есть активная подписка до {active_sub['end_date']}")
+                
+                # Старые истёкшие помечаем как expired, но пользователя НЕ удаляем
+                with db.get_db() as conn:
+                    cursor = conn.cursor()
+                    for sub in subs:
+                        cursor.execute('''
+                            UPDATE subscriptions
+                            SET status = 'expired', updated_at = ?
+                            WHERE id = ?
+                        ''', (datetime.now().isoformat(), sub['id']))
+                
+                logger.info(f"Старые подписки помечены как expired, но юзер {telegram_id} остаётся в канале")
+                continue
+            
+            # Нет активных подписок - УДАЛЯЕМ из канала
+            logger.info(f"❌ Удаляем {telegram_id} из канала (нет активных подписок)")
+            
             # Пытаемся удалить пользователя из канала
             await bot.ban_chat_member(chat_id=config.CHANNEL_ID, user_id=telegram_id)
             await bot.unban_chat_member(chat_id=config.CHANNEL_ID, user_id=telegram_id)
             
-            logger.info(f"Пользователь {telegram_id} удалён из канала")
+            logger.info(f"✅ Пользователь {telegram_id} удалён из канала")
             
-            # Обновляем статус подписки
-            db.update_subscription_status(
-                subscription['stripe_subscription_id'],
-                'expired'
-            )
+            # Обновляем статус ВСЕХ его подписок на 'expired'
+            with db.get_db() as conn:
+                cursor = conn.cursor()
+                for sub in subs:
+                    cursor.execute('''
+                        UPDATE subscriptions
+                        SET status = 'expired', updated_at = ?
+                        WHERE id = ?
+                    ''', (datetime.now().isoformat(), sub['id']))
             
             # Отправляем уведомление пользователю
             message = config.MESSAGES['subscription_expired']

@@ -165,8 +165,8 @@ async def handle_checkout_completed(session):
     price_id = items[0].get('price', {}).get('id')
     duration = get_duration_from_price_id(price_id)
     
-    # Создаём подписку в БД
-    db.create_subscription(
+    # Продлеваем существующую подписку или создаём новую
+    db.renew_or_create_subscription(
         telegram_id=telegram_id,
         stripe_customer_id=customer_id,
         stripe_subscription_id=subscription_id,
