@@ -98,29 +98,27 @@ Para renovar, selecciona un plan en el bot."""
     for telegram_id, subs in users_to_remove.items():
         
         try:
-        # ВАЖНО: Проверяем, есть ли у юзера ДРУГИЕ активные подписки
-        active_sub = db.get_active_subscription(telegram_id)
-        
-        if active_sub:
-            logger.info(f"⏭️ Пропуск удаления {telegram_id}: есть активная подписка до {active_sub['end_date']}")
+            # ВАЖНО: Проверяем, есть ли у юзера ДРУГИЕ активные подписки
+            active_sub = db.get_active_subscription(telegram_id)
             
-            # Старые истёкшие помечаем как expired, но пользователя НЕ удаляем
-            with db.get_db() as conn:
-                cursor = conn.cursor()
-                for sub in subs:
-                    cursor.execute('''
-                        UPDATE subscriptions
-                        SET status = 'expired', updated_at = ?
-                        WHERE id = ?
-                    ''', (datetime.now().isoformat(), sub['id']))
+            if active_sub:
+                logger.info(f"⏭️ Пропуск удаления {telegram_id}: есть активная подписка до {active_sub['end_date']}")
+                
+                # Старые истёкшие помечаем как expired, но пользователя НЕ удаляем
+                with db.get_db() as conn:
+                    cursor = conn.cursor()
+                    for sub in subs:
+                        cursor.execute('''
+                            UPDATE subscriptions
+                            SET status = 'expired', updated_at = ?
+                            WHERE id = ?
+                        ''', (datetime.now().isoformat(), sub['id']))
+                
+                logger.info(f"Старые подписки помечены как expired, но юзер {telegram_id} остаётся в канале")
+                continue
             
-            logger.info(f"Старые подписки помечены как expired, но юзер {telegram_id} остаётся в канале")
-            continue
-        
-        # Нет активных подписок - УДАЛЯЕМ из канала
-        logger.info(f"❌ Удаляем {telegram_id} из канала (прошло 48ч, нет активных подписок)")
-        
-        try:
+            # Нет активных подписок - УДАЛЯЕМ из канала
+            logger.info(f"❌ Удаляем {telegram_id} из канала (прошло 48ч, нет активных подписок)")
             
             # Удаляем пользователя из канала
             await bot.ban_chat_member(chat_id=config.CHANNEL_ID, user_id=telegram_id)
