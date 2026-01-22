@@ -124,14 +124,14 @@ async def plan_selected(update: Update, context: ContextTypes.DEFAULT_TYPE, plan
     """Обработка выбора тарифа"""
     user = update.effective_user
     
-    # Определяем price_id по тексту
-    if "1 месяц" in plan_text:
+    # Определяем price_id по тексту (смотрим на начало строки, чтобы избежать ошибок с описанием)
+    if plan_text.startswith("📅 1 месяц"):
         price_id = config.STRIPE_PRICES['1_month']
         plan = '1_month'
-    elif "6 месяц" in plan_text:
+    elif plan_text.startswith("📅 6 месяцев"):
         price_id = config.STRIPE_PRICES['6_months']
         plan = '6_months'
-    elif "12 месяц" in plan_text:
+    elif plan_text.startswith("📅 12 месяцев"):
         price_id = config.STRIPE_PRICES['12_months']
         plan = '12_months'
     else:
