@@ -27,52 +27,57 @@ STRIPE_PRICES = {
     '12_months': 'price_1SrktMAQcjmHJH4y55By2JLp'  # 44.99 EUR/12 месяцев
 }
 
-# Тексты бота (русский)
+# Тексты бота (испанский)
 MESSAGES = {
-    'welcome': """👋 Добро пожаловать в ENGUERRADOS!
+    'welcome': """👋🏻 Bienvenido a ENGUERRADOS
 
-Вы в одном шаге от доступа к информации, которую большинство не видит или не умеет интерпретировать.
+Estás a un solo paso de acceder a información que la mayoría no ve o no sabe interpretar.
 
-ENGUERRADOS — это закрытое пространство для тех, кто понимает, что мир движется силой, интересами и стратегическими решениями, а не поверхностными заголовками.
+ENGUERRADOS es un espacio privado para quienes entienden que el mundo se mueve por poder, intereses y decisiones estratégicas, no por titulares superficiales.
 
-🚀 После оплаты вы получите мгновенный доступ к геополитическому и геоэкономическому анализу высокого уровня:
-— проверенные факты
-— глубокий контекст
-— стратегическое чтение конфликтов, рынков и глобальных альянсов
+🚀 Tras el pago, obtendrás acceso inmediato a análisis geopolítico y geoeconómico de alto nivel:
+— hechos verificados
+— contexto profundo
+— lectura estratégica de conflictos, mercados y alianzas globales.
 
-Здесь не потребляют шум.
-Здесь предвидят сценарии и принимают решения с преимуществом.""",
+Aquí no se consume ruido.
+Aquí se anticipan escenarios y se toman decisiones con ventaja.""",
 
-    'choose_plan': """Подписка представляет ваше членство и доступ к закрытому сообществу, где стратегический анализ превращает информацию в преимущество.
+    'choose_plan': """La suscripción representa tu membresía y el acceso a una comunidad privada, donde el análisis estratégico convierte la información en ventaja.
 
-Выберите период подписки:""",
+Selecciona el período de suscripción:""",
 
-    'payment_success': """✅ Оплата подтверждена!
+    'payment_success': """🙌🏻 Pago realizado con éxito
 
-Ваша подписка активна. Перейдите по ссылке ниже для доступа к закрытому каналу:
+Puedes unirte al canal de la comunidad a través del siguiente enlace 👇🏻
 
 {invite_link}
 
-Добро пожаловать в ENGUERRADOS!""",
+¡Bienvenido a ENGUERRADOS! 🚀""",
 
+    'subscription_expired': """⚠️ Tu suscripción ha finalizado.
 
-    'subscription_expired': """⚠️ Ваша подписка истекла.
+Para seguir teniendo acceso al canal, selecciona un nuevo plan.""",
 
-Чтобы продлить доступ к каналу, выберите новый тарифный план.""",
+    'subscription_expiring_soon': """⚠️ Tu período de suscripción finaliza mañana.
 
-    'subscription_expiring_soon': """⚠️ Ваша подписка истекает завтра!
+Fecha de finalización: {expiry_date}
 
-Дата окончания: {expiry_date}
+Renueva ahora y sigue disfrutando del acceso al canal.""",
 
-Чтобы не потерять доступ, продлите подписку.""",
+    'already_subscribed': """✅ Ya tienes una suscripción activa.
+
+Acceso válido hasta: {expiry_date}
+
+Para recibir el enlace de nuevo, usa "Obtener enlace".""",
     
-    'main_menu': """📋 Главное меню
+    'main_menu': """📋 Inicio
 
-Выберите действие:""",
+Selecciona una opción:""",
     
-    'admin_menu': """👨‍💼 Админ-панель
+    'admin_menu': """👨‍💼 Admin Panel
 
-Доступные команды:"""
+Comandos disponibles:"""
 }
 
 # Validación de configuración

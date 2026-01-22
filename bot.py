@@ -23,30 +23,30 @@ def get_main_keyboard(is_subscribed=False):
     """Клавиатура главного меню"""
     if is_subscribed:
         keyboard = [
-            [KeyboardButton("📱 Получить ссылку")],
-            [KeyboardButton("📋 Моя подписка")]
+            [KeyboardButton("📱 Obtener enlace")],
+            [KeyboardButton("📋 Mi suscripción")]
         ]
     else:
         keyboard = [
-            [KeyboardButton("🚀 Купить подписку")]
+            [KeyboardButton("🚀 Comprar suscripción")]
         ]
     return ReplyKeyboardMarkup(keyboard, resize_keyboard=True)
 
 def get_plans_keyboard():
     """Клавиатура выбора тарифа"""
     keyboard = [
-        [KeyboardButton("📅 1 месяц - 4.99 EUR")],
-        [KeyboardButton("📅 6 месяцев - 24.99 EUR (1 месяц в подарок)")],
-        [KeyboardButton("📅 12 месяцев - 44.99 EUR (3 месяца в подарок)")],
-        [KeyboardButton("« Назад")]
+        [KeyboardButton("📅 1 mes - 4.99 EUR")],
+        [KeyboardButton("📅 3 meses - 24.99 EUR (1 mes gratis)")],
+        [KeyboardButton("📅 12 meses - 44.99 EUR (3 meses gratis)")],
+        [KeyboardButton("« Atrás")]
     ]
     return ReplyKeyboardMarkup(keyboard, resize_keyboard=True)
 
 def get_admin_keyboard():
     """Клавиатура админ-панели"""
     keyboard = [
-        [KeyboardButton("💳 Активные подписки")],
-        [KeyboardButton("« Главное меню")]
+        [KeyboardButton("💳 Suscripciones activas")],
+        [KeyboardButton("« Menú principal")]
     ]
     return ReplyKeyboardMarkup(keyboard, resize_keyboard=True)
 
@@ -80,7 +80,7 @@ async def admin_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
     user = update.effective_user
     
     if user.id not in config.ADMIN_IDS:
-        await update.message.reply_text("❌ У вас нет доступа к админ-панели")
+        await update.message.reply_text("❌ No tienes acceso al panel de administración")
         return
     
     keyboard = get_admin_keyboard()
@@ -92,28 +92,28 @@ async def message_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
     user = update.effective_user
     
     # Главное меню
-    if text == "🚀 Купить подписку":
+    if text == "🚀 Comprar suscripción":
         await show_plans(update, context)
     
-    elif text == "📱 Получить ссылку":
+    elif text == "📱 Obtener enlace":
         await get_link(update, context)
     
-    elif text == "📋 Моя подписка":
+    elif text == "📋 Mi suscripción":
         await show_subscription(update, context)
     
-    elif text == "« Назад" or text == "« Главное меню":
+    elif text == "« Atrás" or text == "« Menú principal":
         await start_command(update, context)
     
     # Выбор тарифа
-    elif "месяц" in text.lower() and "EUR" in text:
+    elif "mes" in text.lower() and "EUR" in text:
         await plan_selected(update, context, text)
     
     # Админ-панель
-    elif text == "💳 Активные подписки":
+    elif text == "💳 Suscripciones activas":
         await admin_active_subscriptions(update, context)
     
     else:
-        await update.message.reply_text("Выберите действие из меню ниже 👇")
+        await update.message.reply_text("Selecciona una opción del menú 👇")
 
 async def show_plans(update: Update, context: ContextTypes.DEFAULT_TYPE):
     """Показать тарифные планы"""
@@ -125,17 +125,17 @@ async def plan_selected(update: Update, context: ContextTypes.DEFAULT_TYPE, plan
     user = update.effective_user
     
     # Определяем price_id по тексту (смотрим на начало строки, чтобы избежать ошибок с описанием)
-    if plan_text.startswith("📅 1 месяц"):
+    if plan_text.startswith("📅 1 mes"):
         price_id = config.STRIPE_PRICES['1_month']
         plan = '1_month'
-    elif plan_text.startswith("📅 6 месяцев"):
+    elif plan_text.startswith("📅 3 meses"):
         price_id = config.STRIPE_PRICES['6_months']
         plan = '6_months'
-    elif plan_text.startswith("📅 12 месяцев"):
+    elif plan_text.startswith("📅 12 meses"):
         price_id = config.STRIPE_PRICES['12_months']
         plan = '12_months'
     else:
-        await update.message.reply_text("❌ Неверный план")
+        await update.message.reply_text("❌ Plan no válido")
         return
     
     try:
@@ -161,24 +161,24 @@ async def plan_selected(update: Update, context: ContextTypes.DEFAULT_TYPE, plan
                 status='pending'
             )
             
-            message = """✅ Ссылка для оплаты создана!
+            message = """✅ ¡El enlace de pago ha sido creado!
 
-Нажмите кнопку ниже для безопасной оплаты через Stripe.
+Haz clic en el botón de abajo para realizar un pago seguro a través de Stripe.
 
-После оплаты вы автоматически получите доступ к каналу.
+Después de completar el pago, recibirás automáticamente acceso al canal.
 
-👇 Нажмите для оплаты:"""
+👇 Haz clic para pagar:"""
             
             # Инлайн кнопка для оплаты (используем короткую ссылку если доступна)
             payment_url = session.get('short_url', session['url'])
             inline_keyboard = [
-                [InlineKeyboardButton("💳 Оплатить", url=payment_url)]
+                [InlineKeyboardButton("💳 Pagar", url=payment_url)]
             ]
             inline_markup = InlineKeyboardMarkup(inline_keyboard)
             
             await update.message.reply_text(message, reply_markup=inline_markup)
         else:
-            await update.message.reply_text("❌ Ошибка создания сессии оплаты. Попробуйте снова.")
+            await update.message.reply_text("❌ Error al crear sesión de pago. Inténtalo de nuevo.")
     
     except Exception as e:
         logger.error(f"Ошибка создания Checkout Session: {e}")
@@ -192,7 +192,7 @@ async def get_link(update: Update, context: ContextTypes.DEFAULT_TYPE):
     subscription = db.get_active_subscription(user.id)
     
     if not subscription:
-        message = "❌ У вас нет активной подписки.\n\nДля получения доступа купите подписку."
+        message = "❌ No tienes una suscripción activa.\n\nCompra una suscripción para obtener acceso."
         keyboard = get_main_keyboard(is_subscribed=False)
         await update.message.reply_text(message, reply_markup=keyboard)
         return
@@ -206,20 +206,20 @@ async def get_link(update: Update, context: ContextTypes.DEFAULT_TYPE):
             expire_date=datetime.now() + timedelta(hours=24)
         )
         
-        message = f"""✅ Ваша подписка активна!
+        message = f"""✅ ¡Tu suscripción está activa!
 
-Перейдите по ссылке для доступа к закрытому каналу:
+Accede al canal privado a través del siguiente enlace:
 
 {invite_link.invite_link}
 
-Эта ссылка персональная и действительна только для вас."""
+Este enlace es personal y válido solo para ti."""
         
         keyboard = get_main_keyboard(is_subscribed=True)
         await update.message.reply_text(message, reply_markup=keyboard, disable_web_page_preview=True)
     
     except Exception as e:
         logger.error(f"Ошибка создания invite link: {e}")
-        await update.message.reply_text(f"❌ Ошибка создания ссылки: {str(e)}")
+        await update.message.reply_text(f"❌ Error al crear el enlace: {str(e)}")
 
 async def show_subscription(update: Update, context: ContextTypes.DEFAULT_TYPE):
     """Показать информацию о подписке"""
@@ -227,7 +227,7 @@ async def show_subscription(update: Update, context: ContextTypes.DEFAULT_TYPE):
     subscription = db.get_active_subscription(user.id)
     
     if not subscription:
-        message = "❌ У вас нет активной подписки."
+        message = "❌ No tienes una suscripción activa."
         keyboard = get_main_keyboard(is_subscribed=False)
     else:
         start_date = datetime.fromisoformat(subscription['start_date']).strftime('%d.%m.%Y')
@@ -236,14 +236,14 @@ async def show_subscription(update: Update, context: ContextTypes.DEFAULT_TYPE):
         # Сколько дней осталось
         days_left = (datetime.fromisoformat(subscription['end_date']) - datetime.now()).days
         
-        message = f"""📋 Ваша подписка
+        message = f"""📋 Tu suscripción
 
-Статус: ✅ Активна
-Начало: {start_date}
-Действительна до: {end_date}
-Осталось дней: {days_left}
+Estado: ✅ Activa
+Inicio: {start_date}
+Válida hasta: {end_date}
+Días restantes: {days_left}
 
-Ваш доступ к закрытому каналу гарантирован до даты окончания."""
+Tu acceso al canal privado está garantizado hasta la fecha de finalización."""
         
         keyboard = get_main_keyboard(is_subscribed=True)
     
@@ -255,7 +255,7 @@ async def test_access_command(update: Update, context: ContextTypes.DEFAULT_TYPE
     
     # Только для админов
     if user.id not in config.ADMIN_IDS:
-        await update.message.reply_text("❌ У вас нет доступа к этой команде")
+        await update.message.reply_text("❌ No tienes acceso a este comando")
         return
     
     try:
