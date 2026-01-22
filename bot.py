@@ -169,9 +169,10 @@ async def plan_selected(update: Update, context: ContextTypes.DEFAULT_TYPE, plan
 
 👇 Нажмите для оплаты:"""
             
-            # Инлайн кнопка для оплаты
+            # Инлайн кнопка для оплаты (используем короткую ссылку если доступна)
+            payment_url = session.get('short_url', session['url'])
             inline_keyboard = [
-                [InlineKeyboardButton("💳 Оплатить", url=session['url'])]
+                [InlineKeyboardButton("💳 Оплатить", url=payment_url)]
             ]
             inline_markup = InlineKeyboardMarkup(inline_keyboard)
             

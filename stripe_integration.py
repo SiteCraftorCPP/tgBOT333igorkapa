@@ -5,6 +5,14 @@ from typing import Dict, Optional
 
 import config
 
+try:
+    from short_link_generator import create_short_link
+    ENABLE_SHORT_LINKS = True
+except ImportError:
+    ENABLE_SHORT_LINKS = False
+    logger = logging.getLogger(__name__)
+    logger.warning("short_link_generator не найден - короткие ссылки отключены")
+
 logger = logging.getLogger(__name__)
 
 STRIPE_API_BASE = "https://api.stripe.com/v1"
@@ -50,6 +58,23 @@ def create_checkout_session(price_id: str, customer_email: str, metadata: Dict) 
         if response.status_code == 200:
             session = response.json()
             logger.info(f"Создана Checkout Session: {session['id']}")
+            
+            # Добавляем короткую ссылку если доступен генератор
+            if ENABLE_SHORT_LINKS:
+                plan_map = {
+                    config.STRIPE_PRICES['1_month']: '1m',
+                    config.STRIPE_PRICES['6_months']: '6m',
+                    config.STRIPE_PRICES['12_months']: '12m'
+                }
+                plan_name = plan_map.get(price_id, '')
+                
+                # Создаём короткую ссылку
+                short_url = create_short_link(session['url'], plan_name)
+                session['short_url'] = short_url
+                logger.info(f"Короткая ссылка: {short_url}")
+            else:
+                session['short_url'] = session['url']
+            
             return session
         else:
             error = response.json()
